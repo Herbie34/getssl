@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # dns_gcloud
 # Add/Del/List TXT record using the Google Cloud DNS gcloud command
-# ver 2025-09-14 
+# ver 2025-09-17 
 # org. version:
 # https://github.com/kshji/gitssl_gcloud
 #
@@ -121,8 +121,8 @@ list_txt()
 	echo "$list" | while read $variables
 	do
         	(( cnt++ ))
-        	(( cnt == 1 )) && continue
-        	#read name type ttl data  <<<$line
+		# 1st line is header, read the next line
+        	(( cnt == 1 )) && continue  
         	echo "name:$NAME type:$TYPE ttl:$TTL data:$DATA"
         	IFS="," values=($DATA)
         	IFS="$oifs"
