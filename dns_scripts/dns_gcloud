@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # dns_gcloud
 # Add/Del/List TXT record using the Google Cloud DNS gcloud command
-# ver 2025-09-17 
+# ver 2025-09-23 # shellcheck has read, even I'll say eveything was so nice  
 # org. version:
 # https://github.com/kshji/gitssl_gcloud
 #
@@ -82,12 +82,14 @@ dbg()
 
 	cnt=0
 	# save only last execute info
-	date > "$tmpf"
-	echo "GCLOUD_PROJECTID:$GCLOUD_PROJECTID"  >> "$tmpf"
-	echo "GCLOUD_ZONE:$GCLOUD_ZONE"  >> "$tmpf"
-	echo "GCLOUD_ACCOUNT:$GCLOUD_ACCOUNT"  >> "$tmpf"
-	echo "GCLOUD_KEYFILE:$GCLOUD_KEYFILE"  >> "$tmpf"
-	env >> "$tmpf"
+	{
+	date
+	echo "GCLOUD_PROJECTID:$GCLOUD_PROJECTID"  
+	echo "GCLOUD_ZONE:$GCLOUD_ZONE"  
+	echo "GCLOUD_ACCOUNT:$GCLOUD_ACCOUNT"  
+	echo "GCLOUD_KEYFILE:$GCLOUD_KEYFILE"  
+	env
+	} > "$tmpf"
 	for var in $all
 	do
         	((cnt++))
@@ -116,14 +118,21 @@ list_txt()
 	(( stat > 0 )) && err "gcloud error to list TXT record" && exit 2
 	variables=variables
 
+	# Some shell checkers (ex.shellcheck) like to do next different way. I'll say both works
+	# you can read 1st line to var and then use {$var?} on reading
+	# in this case you'll get same result. This read 1st loop varianle variables, look value of variables
+ 	# on the second loop it read variables, which was on the 1st line ... command line process is so nice
+	# this do exactly what we need to do ... (not that what https://www.shellcheck.net/wiki/SC2229 explain)
 	oifs="$IFS"
 	cnt=0
 	echo "$list" | while read $variables
 	do
         	(( cnt++ ))
-		# 1st line is header, read the next line
-        	(( cnt == 1 )) && continue  
+		# 1st line is header, read next line
+        	(( cnt == 1 )) && continue
         	echo "name:$NAME type:$TYPE ttl:$TTL data:$DATA"
+		# next line works just what we need, shellcheck not like this ...
+		# Wiki's last part: it's okay https://www.shellcheck.net/wiki/SC2206
         	IFS="," values=($DATA)
         	IFS="$oifs"
         	numOfvalues=${#values[@]}
@@ -158,10 +167,10 @@ del_txt()
 	(( stat > 0 )) && err "gcloud start transaction error" && exit 2
 	
 	# del TXT
-	dbgstr gcloud dns record-sets transaction remove  --name="$Xname" --ttl=$ttl --type="TXT" \
-			--zone="$GCLOUD_ZONE" --project="$GCLOUD_PROJECTID" $Xtoken
-	gcloud dns record-sets transaction remove  --name="$Xname" --ttl=$ttl --type="TXT" \
-        	--zone="$GCLOUD_ZONE" --project="$GCLOUD_PROJECTID" $Xtoken
+	dbgstr gcloud dns record-sets transaction remove  --name="$Xname" --ttl="$ttl" --type="TXT" \
+			--zone="$GCLOUD_ZONE" --project="$GCLOUD_PROJECTID" "$Xtoken"
+	gcloud dns record-sets transaction remove  --name="$Xname" --ttl="$ttl" --type="TXT" \
+        	--zone="$GCLOUD_ZONE" --project="$GCLOUD_PROJECTID" "$Xtoken"
 	stat=$?
 	if (( stat > 0 )) ; then
 		err "gcloud remove error" 
@@ -174,7 +183,7 @@ del_txt()
 	(( stat > 0 )) && err "gcloud transaction execute error" && exit 2
 	
 	# if not sleep, get error ???
-	sleep $sleepafter
+	sleep "$sleepafter"
 	exit 0
 }
 
@@ -205,10 +214,10 @@ add_txt()
 	fi
 	
 	# add TXT
-	dbgstr gcloud dns record-sets transaction add  --name="$Xname" --ttl=$ttl --type="TXT" \
-		--zone="$GCLOUD_ZONE" --project="$GCLOUD_PROJECTID" $Xtoken
-	gcloud dns record-sets transaction add  --name="$Xname" --ttl=$ttl --type="TXT" \
-		--zone="$GCLOUD_ZONE" --project="$GCLOUD_PROJECTID" $Xtoken
+	dbgstr gcloud dns record-sets transaction add  --name="$Xname" --ttl="$ttl" --type="TXT" \
+		--zone="$GCLOUD_ZONE" --project="$GCLOUD_PROJECTID" "$Xtoken"
+	gcloud dns record-sets transaction add  --name="$Xname" --ttl="$ttl" --type="TXT" \
+		--zone="$GCLOUD_ZONE" --project="$GCLOUD_PROJECTID" "$Xtoken"
 	stat=$?
 	if (( stat > 0 )) ; then
 		err "gcloud add error" 
@@ -222,7 +231,7 @@ add_txt()
 	(( stat > 0 )) && err "gcloud transaction execute error" && exit 2
 	
 	# if not sleep, get error ???
-	sleep $sleepafter
+	sleep "$sleepafter"
 	exit 0
 }
 
@@ -251,7 +260,7 @@ do
 			;;
 		-t|--ttl) ttl="$2"; shift ;;
 		-?|--help) usage; exit 2 ;;
-		-*|--*) # unknown option
+		-*) # unknown option
 			err "unknown option $arg"
 			usage
 			exit 2
@@ -273,7 +282,7 @@ done
 all="$*"
 fulldomain="$1"
 shift
-token="$@"  # could be 1-n tokens if del
+token="$*"  # could be 1-n tokens if del
 
 case "$command" in
 	add) ;;
@@ -285,7 +294,7 @@ esac
 
 [ "$command" = "" ] && err "need option -c add | -c del | -c list" && exit 2
 [ "$fulldomain" = "" ] && err "need fulldomain argument." && exit 2
-[ "$token" = "" -a "$command" != "list" ] && err "need token argument." && exit 2
+[ "$token" = "" ] && [ "$command" != "list" ] && err "need token argument." && exit 2
 
 # dbg info to the program tmp dir
 (( DEBUG>0)) && dbg "$fulldomain" "$command"
@@ -302,9 +311,9 @@ stat=$?
 (( stat > 0 )) && err "gcloud activate account error" && exit 2
 
 case "$command" in
-	add) add_txt "$gname" $token
+	add) add_txt "$gname" "$token"
 	    ;;
-	del) del_txt "$gname" $token
+	del) del_txt "$gname" "$token"
 	    ;;
 	list) list_txt "$gname"
 	    ;;
