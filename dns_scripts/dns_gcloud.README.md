@@ -23,8 +23,8 @@ gcloud init
 Need also Google Cloud Console Service Account:
 [Google Cloud Console Service Account](https://console.cloud.google.com/projectselector2/iam-admin/serviceaccounts )
 
-* Permissions role "DNS Zone Editor"
-* result is JSON keyfile
+* Permissions role "DNS Zone Editor" or "DNS Administrator"
+* tab Keys generate Key, JSON: result is JSON keyfile
 
 Service Account  account is email, usually something like  xxx@xxx.gserviceaccount.com
 
